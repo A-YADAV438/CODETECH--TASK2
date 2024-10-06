@@ -1,0 +1,47 @@
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras import models, layers
+from tensorflow.keras.preprocessing import sequence
+
+# Load IMDb dataset
+(train_data, train_labels), (test_data, test_labels) = tf.keras.datasets.imdb.load_data(num_words=10000)
+
+# Preprocess the data
+maxlen = 500  # Cut reviews after this number of words
+train_data = sequence.pad_sequences(train_data, maxlen=maxlen)
+test_data = sequence.pad_sequences(test_data, maxlen=maxlen)
+
+# Build the model
+model = models.Sequential()
+model.add(layers.Embedding(10000, 128, input_length=maxlen))
+model.add(layers.LSTM(128))
+model.add(layers.Dense(1, activation='sigmoid'))
+
+# Compile the model
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Train the model
+history = model.fit(train_data, train_labels, epochs=5, batch_size=32, validation_split=0.2)
+
+# Evaluate the model
+test_loss, test_acc = model.evaluate(test_data, test_labels)
+print(f'Test accuracy: {test_acc:.4f}')
+
+# Function to decode review
+def decode_review(encoded_review):
+    word_index = tf.keras.datasets.imdb.get_word_index()
+    reverse_word_index = dict((i + 3, word) for word, i in word_index.items())
+    return ' '.join(reverse_word_index.get(i, '?') for i in encoded_review)
+
+# Predict sentiment for a new review
+new_review = [1, 14, 22, 12, 3, 0]  # Example encoded review
+new_review_padded = sequence.pad_sequences([new_review], maxlen=maxlen)
+
+prediction = model.predict(new_review_padded)
+print(f'Predicted sentiment: {"Positive" if prediction[0][0] > 0.5 else "Negative"}')
+
+# Save the model
+model.save('sentiment_model.h5')
+
+# Load the model (if needed later)
+# model = load_model('sentiment_model.h5')
